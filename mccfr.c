@@ -31,7 +31,6 @@ const double UTILITIES[3][3] = {
 double strategy[NUM_INFO][NUM_ACTIONS] = {0};
 double strategy_sum[NUM_INFO][NUM_ACTIONS] = {0};
 double regrets[NUM_INFO][NUM_ACTIONS] = {0};
-double tempRegrets[NUM_INFO][NUM_ACTIONS] = {0};
 pcg32_random_t rng;
 
 static inline uint32_t random_bounded_divisionless(uint32_t range) {
@@ -112,7 +111,7 @@ void compute_avg_strategy(int infoIndex)
     printf("[%f, %f]\n", avg_strategy[0], avg_strategy[1]);
 }
 
-double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot, int traversing_player){
+double external_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot, int traversing_player){
     int plays = strlen(history);
     int acting_player = plays % 2;
     int opponent_player = 1 - acting_player;
@@ -162,7 +161,6 @@ double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], in
         sprintf(cardStr, "%hu", cards[acting_player]);
         strcat(infoset,cardStr);
         strcat(infoset, tempHistory);
-        //strcpy(infoset,strcat(cardStr,tempHistory));
         int infoIndex = getInfoIndex(infoset);
         compute_strategy(infoIndex,&tempStrategy); //want to put infoset instead of cards, need a map from infoset to int
         for (int b=0; b<NUM_ACTIONS; b++){
@@ -171,12 +169,12 @@ double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], in
             strcpy(next_history, strcat(tempHistory, actionStr));
             strcpy(temp,next_history);
             pot += b;
-            util[b] = vanilla_cfr(cards, next_history, pot, traversing_player);
+            util[b] = external_cfr(cards, next_history, pot, traversing_player);
             node_util += tempStrategy[b] * util[b];
         }
         free(tempStrategy);
         for (int c=0; c<NUM_ACTIONS; c++){
-            tempRegrets[infoIndex][c] += util[c] - node_util;
+            regrets[infoIndex][c] += util[c] - node_util;
         }
         return node_util;
     }
@@ -201,7 +199,7 @@ double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], in
             pot += 1;
         }
         strcpy(temp, next_history);
-        tempUtil = vanilla_cfr(cards, next_history, pot, traversing_player);
+        tempUtil = external_cfr(cards, next_history, pot, traversing_player);
         for (int a=0; a<NUM_ACTIONS; a++){
             strategy_sum[infoIndex][a] += tempStrategy[a];
         }
@@ -226,24 +224,17 @@ void cfr(int iterations)
         if (t%100000==0){
             printf("Iteration: %d\n", t);
         }
-        for (unsigned short g = 0; g < NUM_CARDS; g++)
-        {
-            for (unsigned short h = 0; h < NUM_CARDS; h++)
-            {
-                if (g!=h){
-                    for (int i=0; i<NUM_PLAYERS; i++){ //Number of players is two
-                        cards[0] = g;
-                        cards[1] = h;
-                        util[i] += ((double)1/6)*vanilla_cfr(cards, history, 2, i);
-                    }
-                }
+        for (int i=0; i<NUM_PLAYERS; i++){ //Number of players is two
+            //Shuffle cards
+            for (int j=NUM_CARDS; j>1; j--) {
+                int p = random_bounded_divisionless(j); // number in [0,i)
+                temp = deck[j-1];
+                deck[j-1] = deck[p]; // swap the values at j-1 and p
+                deck[p] = temp;
             }
-        }
-        for (int i=0; i<NUM_INFO; i++){
-            regrets[i][0] += tempRegrets[i][0];
-            regrets[i][1] += tempRegrets[i][1];
-            tempRegrets[i][0] = 0;
-            tempRegrets[i][1] = 0;
+            cards[0] = deck[0];
+            cards[1] = deck[1];
+            util[i] += external_cfr(cards, history, 2, i);
         }
     }
     printf("Average game value: %f\n", (util[0]/iterations));
@@ -257,6 +248,6 @@ int main() {
     // Initialise the random number generator
     srand(time(NULL));
     pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&rng);
-    cfr(10000); //iterations
+    cfr(10000000); //iterations
     return 0;
 }

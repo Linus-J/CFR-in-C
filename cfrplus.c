@@ -112,7 +112,7 @@ void compute_avg_strategy(int infoIndex)
     printf("[%f, %f]\n", avg_strategy[0], avg_strategy[1]);
 }
 
-double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot, int traversing_player){
+double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot, int traversing_player, int t){
     int plays = strlen(history);
     int acting_player = plays % 2;
     int opponent_player = 1 - acting_player;
@@ -162,7 +162,6 @@ double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], in
         sprintf(cardStr, "%hu", cards[acting_player]);
         strcat(infoset,cardStr);
         strcat(infoset, tempHistory);
-        //strcpy(infoset,strcat(cardStr,tempHistory));
         int infoIndex = getInfoIndex(infoset);
         compute_strategy(infoIndex,&tempStrategy); //want to put infoset instead of cards, need a map from infoset to int
         for (int b=0; b<NUM_ACTIONS; b++){
@@ -171,7 +170,7 @@ double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], in
             strcpy(next_history, strcat(tempHistory, actionStr));
             strcpy(temp,next_history);
             pot += b;
-            util[b] = vanilla_cfr(cards, next_history, pot, traversing_player);
+            util[b] = vanilla_cfr(cards, next_history, pot, traversing_player, t);
             node_util += tempStrategy[b] * util[b];
         }
         free(tempStrategy);
@@ -201,9 +200,9 @@ double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], in
             pot += 1;
         }
         strcpy(temp, next_history);
-        tempUtil = vanilla_cfr(cards, next_history, pot, traversing_player);
+        tempUtil = vanilla_cfr(cards, next_history, pot, traversing_player, t);
         for (int a=0; a<NUM_ACTIONS; a++){
-            strategy_sum[infoIndex][a] += tempStrategy[a];
+            strategy_sum[infoIndex][a] += pow(t,2)*tempStrategy[a];
         }
         free(tempStrategy);
         return tempUtil;
@@ -234,14 +233,14 @@ void cfr(int iterations)
                     for (int i=0; i<NUM_PLAYERS; i++){ //Number of players is two
                         cards[0] = g;
                         cards[1] = h;
-                        util[i] += ((double)1/6)*vanilla_cfr(cards, history, 2, i);
+                        util[i] += ((double)1/6)*vanilla_cfr(cards, history, 2, i, t);
                     }
                 }
             }
         }
         for (int i=0; i<NUM_INFO; i++){
-            regrets[i][0] += tempRegrets[i][0];
-            regrets[i][1] += tempRegrets[i][1];
+            regrets[i][0] += fmax(tempRegrets[i][0],0);
+            regrets[i][1] += fmax(tempRegrets[i][1],0);
             tempRegrets[i][0] = 0;
             tempRegrets[i][1] = 0;
         }
@@ -257,6 +256,6 @@ int main() {
     // Initialise the random number generator
     srand(time(NULL));
     pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&rng);
-    cfr(10000); //iterations
+    cfr(10000000); //iterations
     return 0;
 }
