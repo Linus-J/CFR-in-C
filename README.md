@@ -15,5 +15,6 @@ Projects like Cython exist that convert Python programs into a C program that ca
 
 ### Checklist:
 - External sampling CFR ([MCCFR](https://proceedings.neurips.cc/paper/2009/file/00411460f7c92d2124a67ea0f4cb5f85-Paper.pdf "MCCFR") variant): ✔️
-- [Vanilla CFR](https://proceedings.neurips.cc/paper/2007/file/08d98638c6fcd194a4b1e6992063e944-Paper.pdf "Vanilla CFR"): ➖
-- [Linear CFR](https://ojs.aaai.org/index.php/AAAI/article/download/4007/3885 "Linear CFR") (Discounted CFR with specififc params): ➖
+- [Vanilla CFR](https://proceedings.neurips.cc/paper/2007/file/08d98638c6fcd194a4b1e6992063e944-Paper.pdf "Vanilla CFR"): ✔️
+- [CFR+](https://proceedings.neurips.cc/paper/2007/file/08d98638c6fcd194a4b1e6992063e944-Paper.pdf "Vanilla CFR"): ✔️
+- [Discounted CFR](https://ojs.aaai.org/index.php/AAAI/article/download/4007/3885 "Linear CFR") (Discounted CFR with specififc params): ✔️
