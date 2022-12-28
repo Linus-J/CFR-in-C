@@ -257,6 +257,6 @@ int main() {
     // Initialise the random number generator
     srand(time(NULL));
     pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&rng);
-    cfr(10000); //iterations
+    cfr(10000000); //iterations
     return 0;
 }
