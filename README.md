@@ -2,6 +2,25 @@
 ### Description:
 Repository for CFR algorithms written in C to optimise execution speeds for each implementation. So far MCCFR (Monte Carlo Counterfactual Regret Minimization), Vanilla CFR, CFR+ and DCFR (Discounted Counterfactual Regret Minimization) have been implemented in this repository to solve [Kuhn Poker](https://en.wikipedia.org/wiki/Kuhn_poker "Kuhn Poker").
 
+### Installation instructions:
+#### Step 1: [Clone the repo]
+
+`git clone https://github.com/Linus-J/CFR-in-C.git`
+
+#### Step 2: [Compile your desired CFR implementation(s)]
+
+`make` to compile all variants, or:
+
+`make cfr` / `make cfrplus` / `make mccfr` / `make dcfr` 
+
+#### Step 3: [Execute]
+
+`./cfr` / `./cfrplus` / `./mccfr` / `./dcfr` 
+
+#### Note:
+
+To change the number of iterations or game type, edit the source code and remake the ammended file.
+
 ### Why C?:
 CFR and other algorithms written for imperfect information games are commonly written in Python. This is great for initially writing up the algorithms in a practical way, however does have some considerable drawbacks. Often the straightforward implemtation involves using abstract data/class structures that result in slow execution times. Python makes it easy to do this and lets us use dynamic variable typing so we don't have to worry about type declaration as the program writer. Python uses PyObjects to allow for dynamic variable typing and is also an interpreted language. This among other things were those quailites that helped us effeciently write out our algorithm in Python, but are now the reasons for slower exection times. 
 
