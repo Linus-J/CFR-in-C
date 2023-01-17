@@ -37,3 +37,5 @@ Projects like Cython exist that convert Python programs into a C program that ca
 - [Vanilla CFR](https://proceedings.neurips.cc/paper/2007/file/08d98638c6fcd194a4b1e6992063e944-Paper.pdf "Vanilla CFR"): ✔️
 - [CFR+](https://arxiv.org/abs/1407.5042 "CFR+"): ✔️
 - [Discounted CFR](https://ojs.aaai.org/index.php/AAAI/article/download/4007/3885 "Discounted CFR") (Discounted CFR with specififc params): ✔️
+- Implement Leduc poker with DCFR: ✔️
+- Implement functions to compute exploitability for Kuhn and Leduc poker: ➖
