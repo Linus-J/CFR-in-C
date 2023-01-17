@@ -1,8 +1,8 @@
 C_SOURCES = $(wildcard pcg/*.c)
 HEADERS = $(wildcard pcg/*.h)
 OBJ = ${C_SOURCES:.c=.o}
-CFLAGS = -g -O2 #-fno-stack-protector
-EXECUTABLES = cfr mccfr dcfr cfrplus
+CFLAGS = -O2
+EXECUTABLES = cfr mccfr dcfr cfrplus dcfrLeduc
 
 MAIN = all
 CC = /usr/bin/gcc
@@ -20,6 +20,9 @@ dcfr: dcfr.o $(OBJ)
 	${CC} ${CFLAGS} $^ -o $@ -lm
 
 cfrplus: cfrplus.o $(OBJ)
+	${CC} ${CFLAGS} $^ -o $@ -lm
+
+dcfrLeduc: dcfrLeduc.o $(OBJ)
 	${CC} ${CFLAGS} $^ -o $@ -lm
 
 # Generic rules
