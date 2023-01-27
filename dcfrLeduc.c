@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
+#include <assert.h>
 #include <stdbool.h>
 
 //Figure out what the pot doing and how to reutrn money when a player folds pre and post flop
@@ -21,7 +22,7 @@
 #define NUM_SUITS 2
 
 // Number of decision points spanning all the infosets in the game. 36*5*6=1080
-#define NUM_INFO 1080
+#define NUM_INFO 912
 
 // Number of players in the game
 #define NUM_PLAYERS 2
@@ -37,6 +38,7 @@ double strategy[NUM_INFO][NUM_ACTIONS] = {0};
 double strategy_sum[NUM_INFO][NUM_ACTIONS] = {0};
 double regrets[NUM_INFO][NUM_ACTIONS] = {0};
 double tempRegrets[NUM_INFO][NUM_ACTIONS] = {0};
+int indexes[NUM_INFO] = {0};
 
 // Final computed strategies
 double brStrategy[NUM_INFO][NUM_ACTIONS] = {0};
@@ -53,25 +55,24 @@ int getInfoIndex(char infoStr[MAX_HISTORY_LENGTH], char flopStr[MAX_HISTORY_LENG
             temp = -1;
         }
         flopLength = strlen(flopStr);
+        infoStr[infoLength-1]='\0';
+        infoLength--;
     }
-    switch(infoLength){
-        case 5:
+    switch(infoLength){ //shouldnt be anything for "",0,1
         case 4:
-            index = ((int)(infoStr[0])-'0')*180+30*5; //5*180 + 150 + 30
+            index = ((int)(infoStr[0])-'0')*152+30*4+1; //5*152 + 120 + 1
             break; // 012 -> 5
         case 3:
-            index = ((int)(infoStr[0])-'0')*180+30*(((int)(infoStr[2]-'0'))+2);
+            index = ((int)(infoStr[0])-'0')*152+30*(((int)(infoStr[2]-'0'))+1)+1;
             break; // 01 -> 3, 12 -> 4
         case 2:
-            index = ((int)(infoStr[0]-'0'))*180+30*(((int)(infoStr[1]-'0'))+1); //36+30
+            index = ((int)(infoStr[0]-'0'))*152+30*(((int)(infoStr[1]-'0')))+1; //36+30
             break; // 0 -> 1, 1 -> 2
         case 1:
-            index = ((int)(infoStr[0]-'0'))*180;
+            index = ((int)(infoStr[0]-'0'))*152;
             break; // '' -> 0
     }
-
     switch(flopLength){
-        case 5:
         case 4:
             index += ((int)(flopStr[0])-'0'+temp)*6+6;
             break; // 012 -> 6
@@ -85,6 +86,7 @@ int getInfoIndex(char infoStr[MAX_HISTORY_LENGTH], char flopStr[MAX_HISTORY_LENG
             index += ((int)(flopStr[0]-'0')+temp)*6+1;
             break; // '' -> 1
         default:
+            //assert(false);
             break;
     }
     return index;
@@ -92,9 +94,9 @@ int getInfoIndex(char infoStr[MAX_HISTORY_LENGTH], char flopStr[MAX_HISTORY_LENG
 uint32_t validActInf(int index){
     int a = 0, info = 0, flopInfo = 0;
     bool flopped = false;
-    a = index % 180;
-    info = a / 30;
-    a = a % 30;
+    a = index % 152;
+    info = (a+29) / 30;
+    a = (a-2) % 30;
     if (a > 5){
         flopped = true;
     }
@@ -118,10 +120,10 @@ void reverseInfoIndex(int index, char **infoStr){
     int card = 0, a = 0, info = 0, flopCard = 0, flopInfo = 0;
     bool flopped = false;
     char tempStr[MAX_HISTORY_LENGTH*2+5] = {'\0'}, flopStr[MAX_HISTORY_LENGTH+5] = {'\0'};
-    card = index / 180;
-    a = index % 180;
-    info = a / 30;
-    a = a % 30;
+    card = index / 152;
+    a = index % 152;
+    info = (a+29) / 30;
+    a = (a-2) % 30;
     if (a > 5){
         flopped = true;
     }
@@ -130,7 +132,7 @@ void reverseInfoIndex(int index, char **infoStr){
 
     sprintf(tempStr, "%d + ", card);
     if (flopped){
-        if (card<flopCard){
+        if (card<=flopCard){
             flopCard++;
         }
         sprintf(flopStr, "+ %d + ", flopCard);
@@ -154,26 +156,31 @@ void reverseInfoIndex(int index, char **infoStr){
         case 0:
             strcat(tempStr,"");
             break; 
+        default:
+            strcat(tempStr,"012");
+            break;
     }
-    switch (flopInfo){
-        case 5:
-            strcat(flopStr,"012");
-            break;
-        case 4:
-            strcat(flopStr,"12");
-            break;
-        case 3:
-            strcat(flopStr,"01");
-            break; 
-        case 2:
-            strcat(flopStr,"1");
-            break;
-        case 1:
-            strcat(flopStr,"0");
-            break;
-        case 0:
-            strcat(flopStr,"");
-            break; 
+    if (flopped){
+        switch (flopInfo){
+            case 5:
+                strcat(flopStr,"012");
+                break;
+            case 4:
+                strcat(flopStr,"12");
+                break;
+            case 3:
+                strcat(flopStr,"01");
+                break; 
+            case 2:
+                strcat(flopStr,"1");
+                break;
+            case 1:
+                strcat(flopStr,"0");
+                break;
+            case 0:
+                strcat(flopStr,"");
+                break; 
+        }
     }
     strcat(tempStr,flopStr);
     int i = 0;
@@ -623,11 +630,15 @@ double calc_ev(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot, uin
             pot += b; 
             vals[b] = calc_ev(cards, next_history, pot, traversing_player, flopHistory, p1, p2);
         }
-    }
+        util += vals[b]*tempStrat[b]; 
+    } 
+    return -util;
+    //return smth
 }
 
 double ev(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTIONS], uint32_t traversing_player){
-    uint32_t total_cards = NUM_CARDS*NUM_SUITS, evalue = 0;
+    uint32_t total_cards = NUM_CARDS*NUM_SUITS;
+    double evalue = 0;
     // Initialise cards
     uint32_t deck[NUM_CARDS*NUM_SUITS] = {0};
     char history[MAX_HISTORY_LENGTH]={'\0'};
@@ -649,6 +660,7 @@ double ev(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTIONS], ui
                         cards[1] = g;
                         cards[2] = h;
                         evalue += ((double)1/120)*calc_ev(cards, history, 2, traversing_player, flopHistory, p1, p2);
+                        //printf("%f\n",evalue);
                     }
                 }
             }
@@ -664,6 +676,7 @@ double vanilla_cfr(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot,
     char currentHistory[2*MAX_HISTORY_LENGTH]={'\0'};
     strcat(currentHistory,history);
     strcat(currentHistory,flopHistory);
+    //printf("%s\n",currentHistory);
     if (isTerminal(currentHistory)){
         return getPayoff(cards,history,flopHistory,traversing_player,pot);
     }
@@ -687,6 +700,8 @@ double vanilla_cfr(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot,
     if (acting_player == traversing_player){
         double *tempStrategy;
         tempStrategy = NULL;
+        char *infoStr;
+        infoStr = NULL;
         double util[NUM_ACTIONS] = {0};
         double node_util = 0;
         strcpy(tempHistory, history);
@@ -700,6 +715,10 @@ double vanilla_cfr(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot,
             if (flopHistory[strlen(flopHistory)-1]=='1'){
                 validActions = 3;
             }
+            infoStr = malloc(sizeof(char) * (MAX_HISTORY_LENGTH*2+5));
+            reverseInfoIndex(infoIndex,&infoStr);
+            //printf("%s + %s -> %d -> %s\n",infoset,flopInfoset,infoIndex,infoStr);
+            free(infoStr);
         }else{
             infoIndex = getInfoIndex(infoset,"\0");
             uint32_t tplays = strlen(history);
@@ -708,8 +727,12 @@ double vanilla_cfr(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot,
                     validActions = 3;
                 }
             }
+            infoStr = malloc(sizeof(char) * (MAX_HISTORY_LENGTH*2+5));
+            reverseInfoIndex(infoIndex,&infoStr);
+            //printf("%s -> %d -> %s\n",infoset,infoIndex,infoStr);
+            free(infoStr);
         }       
-        
+        indexes[infoIndex] = infoIndex;
         compute_strategy(infoIndex,&tempStrategy, validActions);
         for (uint32_t b=0; b<validActions; b++){
             sprintf(actionStr, "%hu", b);
@@ -740,6 +763,8 @@ double vanilla_cfr(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot,
     }
     else{ 
         double *tempStrategy;
+        char *infoStr;
+        infoStr = NULL;
         tempStrategy = NULL;
         strcpy(tempHistory, history);
         sprintf(cardStr, "%hu", cards[acting_player]);
@@ -752,6 +777,11 @@ double vanilla_cfr(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot,
             if (flopHistory[strlen(flopHistory)-1]=='1'){
                 validActions = 3;
             }
+            //printf("%s + %s\n",infoset,flopInfoset);
+            infoStr = malloc(sizeof(char) * (MAX_HISTORY_LENGTH*2+5));
+            reverseInfoIndex(infoIndex,&infoStr);
+            //printf("%s + %s -> %d -> %s\n",infoset,flopInfoset,infoIndex,infoStr);
+            free(infoStr);
         }else{
             infoIndex = getInfoIndex(infoset,"\0");
             uint32_t tplays = strlen(history); //maybe redundant variable
@@ -760,8 +790,12 @@ double vanilla_cfr(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot,
                     validActions = 3;
                 }
             }
+            infoStr = malloc(sizeof(char) * (MAX_HISTORY_LENGTH*2+5));
+            reverseInfoIndex(infoIndex,&infoStr);
+            //printf("%s -> %d -> %s\n",infoset,infoIndex,infoStr);
+            free(infoStr);
         }
-
+        indexes[infoIndex] = infoIndex;
         compute_strategy(infoIndex,&tempStrategy,validActions);
         double tempUtil = 0;
         double randNum = ((double)rand())/RAND_MAX;
@@ -846,6 +880,7 @@ void cfr(int iterations)
                                 cards[0] = f;
                                 cards[1] = g;
                                 cards[2] = h;
+                                //printf("C:[%hu, %hu], F:[%hu]\n",f,g,h);
                                 util[i] += ((double)1/120)*vanilla_cfr(cards, history, 2, i, t, flopHistory);
                             }
                         }
@@ -882,11 +917,18 @@ void cfr(int iterations)
     infoStr = NULL;
     infoStr = malloc(sizeof(char) * (MAX_HISTORY_LENGTH*2+5));
     uint32_t validActions = 0;
+    int temp = 0;
     for (uint32_t i=0; i<NUM_INFO; i++){
+        //temp = 0;
         validActions = validActInf(i);
+        // for (int j=0;j<validActions;j++){
+        //     temp += strategy_sum[i][j];
+        // }
+        //if (temp !=0){
         reverseInfoIndex(i, &infoStr);
         printf("%s: ", infoStr);
         print_avg_strategy(i, validActions);
+        //}
     }
     free(infoStr);
     //Calc br etc
@@ -902,12 +944,61 @@ void cfr(int iterations)
     }
     free(tempStrategy);
     best_response(myStrat);
-    printf("EV: %f\n",ev(myStrat, brStrategy, 0));
-}
+    printf("EV: %f\n",ev(myStrat, myStrat, 0));
 
+    // infoStr = NULL;
+    // infoStr = malloc(sizeof(char) * (MAX_HISTORY_LENGTH*2+5));
+    // for (uint32_t i=0; i<NUM_INFO; i++){
+    //     validActions = validActInf(i);
+    //     reverseInfoIndex(i, &infoStr);
+    //     printf("%s: ", infoStr);
+    //     if (validActions == 2){
+    //         printf("[%f, %f]\n", brStrategy[i][0], brStrategy[i][1]);
+    //     }
+    //     else if (validActions == 3){
+    //         printf("[%f, %f, %f]\n", brStrategy[i][0], brStrategy[i][1], brStrategy[i][2]);
+    //     }
+    // }
+    // free(infoStr);
+}
+int cmpfunc (const void * a, const void * b) {
+   return ( *(int*)a - *(int*)b );
+}
 int main() {
     // Initialise the random number generator
     srand(time(NULL));
-    cfr(100); //iterations
+    cfr(100000); //iterations
+    // qsort(indexes, NUM_INFO, sizeof(int), cmpfunc);
+    // int temp = 0;
+    // char *infoStr;
+    // infoStr = NULL;
+    // infoStr = malloc(sizeof(char) * (MAX_HISTORY_LENGTH*2+5));
+    // char s1[] = "50121";
+    // char s2[] = "412";
+    // temp = getInfoIndex(s1,s2);
+    // printf("%d\n", temp);
+
+    // reverseInfoIndex(temp, &infoStr);
+    // printf("%d -> %s\n", temp, infoStr);
+    // reverseInfoIndex(1, &infoStr);
+    // printf("1 -> %s\n", infoStr);
+    // reverseInfoIndex(2, &infoStr);
+    // printf("2 -> %s\n", infoStr);
+    // reverseInfoIndex(3, &infoStr);
+    // printf("3 -> %s\n", infoStr);
+    // reverseInfoIndex(4, &infoStr);
+    // printf("4 -> %s\n", infoStr);
+
+
+    // for (int i=0;i<NUM_INFO;i++){
+    //     if (indexes[i]>0){
+    //         temp++;
+    //         reverseInfoIndex(i, &infoStr);
+    //         //printf("%s: ", infoStr);
+    //         printf("%d -> %s\n",indexes[i], infoStr);
+    //     }
+    // }
+    // free(infoStr);
+    //printf("%d\n",temp);
     return 0;
 }
