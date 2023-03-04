@@ -2,7 +2,7 @@ C_SOURCES = $(wildcard pcg/*.c)
 HEADERS = $(wildcard pcg/*.h)
 OBJ = ${C_SOURCES:.c=.o}
 CFLAGS = -O2
-EXECUTABLES = cfr mccfr dcfr cfrplus
+EXECUTABLES = cfr mccfr dcfr dcfrLeduc cfrplus
 
 MAIN = all
 CC = /usr/bin/gcc
@@ -17,6 +17,9 @@ mccfr: mccfr.o $(OBJ)
 	${CC} ${CFLAGS} $^ -o $@ -lm
 
 dcfr: dcfr.o $(OBJ)
+	${CC} ${CFLAGS} $^ -o $@ -lm
+	
+dcfrLeduc: dcfrLeduc.o $(OBJ)
 	${CC} ${CFLAGS} $^ -o $@ -lm
 
 cfrplus: cfrplus.o $(OBJ)
