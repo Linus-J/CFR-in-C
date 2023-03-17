@@ -92,7 +92,26 @@ void *compute_strategy(int infoIndex, double **tempStrategy)
     }
 }
 
-void compute_avg_strategy(int infoIndex)
+void compute_avg_strategy(int infoIndex, double **tempStrategy)
+{
+    free(*tempStrategy);
+    *tempStrategy = malloc(NUM_ACTIONS * sizeof(double));
+    double normalizing_sum = 0;
+    for (int i = 0; i < NUM_ACTIONS; i++){
+        normalizing_sum += strategy_sum[infoIndex][i];
+    }
+
+    for (int i = 0; i < NUM_ACTIONS; i++){
+        if (normalizing_sum > 0){
+            (*tempStrategy)[i] = strategy_sum[infoIndex][i] / normalizing_sum;
+        }   
+        else{
+            (*tempStrategy)[i] = 1.0 / NUM_ACTIONS;
+        }
+    }
+}
+
+void print_avg_strategy(int infoIndex)
 {
     double avg_strategy[NUM_ACTIONS] = {0};
     double normalizing_sum = 0;
@@ -109,6 +128,90 @@ void compute_avg_strategy(int infoIndex)
         }
     }
     printf("[%f, %f]\n", avg_strategy[0], avg_strategy[1]);
+}
+
+double calcEv(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot, uint32_t traversing_player, double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTIONS]){
+    int plays = strlen(history);
+    int acting_player = plays % 2;
+    int opponent_player = 1 - acting_player;
+    if (plays >= 2){ //Check payoff if history not 0, 1
+        if (history[plays-1] == '0' && history[plays-2] == '1'){ //bet fold or pass bet fold
+            return 1;
+        }
+        if ((history[plays-1] == '0' && history[plays-2] == '0') || (history[plays-1] == '1' && history[plays-2] == '1')){ //check check, bet call or check bet call, go to showdown
+            if ((history[plays-1] == '0' && history[plays-2] == '0')){
+                pot = 1;
+            }else{
+                pot = 2;
+            }
+            if (cards[acting_player] < cards[opponent_player]){
+                return -pot;
+            }
+            else{
+                return pot;
+            }
+        }
+    }
+
+    char next_history[MAX_HISTORY_LENGTH+2]={'\0'};
+    char tempHistory[MAX_HISTORY_LENGTH]={'\0'};
+    char infoset[MAX_HISTORY_LENGTH+2]={'\0'};
+    char actionStr[2]={'\0'};
+    char cardStr[2]={'\0'};
+
+    double strat[NUM_ACTIONS] = {0};
+    double util[NUM_ACTIONS] = {0};
+    double node_util = 0;
+    strcpy(tempHistory, history);
+    sprintf(cardStr, "%hu", cards[traversing_player]);
+    strcat(infoset,cardStr);
+    strcat(infoset, tempHistory);
+    int infoIndex = getInfoIndex(infoset);
+
+    if (traversing_player == 0){
+        strat[0] = p1[infoIndex][0];
+        strat[1] = p1[infoIndex][1];
+    }
+    else{
+        strat[0] = p2[infoIndex][0];
+        strat[1] = p2[infoIndex][1];
+    }
+
+    for (int b=0; b<NUM_ACTIONS; b++){
+        strcpy(tempHistory, history);
+        sprintf(actionStr, "%d", b);
+        strcat(tempHistory, actionStr);
+        strcpy(next_history, tempHistory);
+        pot += b;
+        util[b] = calcEv(cards, next_history, pot, 1-traversing_player, p1, p2);
+    }
+    for (int b=0; b<NUM_ACTIONS; b++){
+        node_util += strat[b] * util[b];
+    }
+    return -node_util;
+}
+
+double ev(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTIONS], uint32_t traversing_player){
+    double exp = 0;
+    unsigned short deck[NUM_CARDS] = {0};
+    for (unsigned short i = 0; i < NUM_CARDS; i++)
+    {
+        deck[i] = i;
+    }
+    unsigned short cards[2] = {0};
+    char history[MAX_HISTORY_LENGTH]={'\0'};
+    for (unsigned short g = 0; g < NUM_CARDS; g++)
+    {
+        for (unsigned short h = 0; h < NUM_CARDS; h++)
+        {
+            if (g!=h){
+                cards[0] = g;
+                cards[1] = h;
+                exp += ((double)1/6)*calcEv(cards, history, 2, traversing_player, p1, p2);                
+            }
+        }
+    }
+    return exp;
 }
 
 double external_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot, int traversing_player){
@@ -238,16 +341,30 @@ void cfr(int iterations)
         }
     }
     printf("Average game value: %f\n", (util[0]/iterations));
+    double myStrat[NUM_INFO][NUM_ACTIONS] = {0};
+    double *tempStrategy;
+    tempStrategy = NULL;
     for (int i=0; i<NUM_INFO; i++){
         printf("%d: ", i);
-        compute_avg_strategy(i);
+        //print_avg_strategy(i);
+        compute_avg_strategy(i, &tempStrategy);
+        myStrat[i][0] = tempStrategy[0];
+        myStrat[i][1] = tempStrategy[1];
+        printf("[%f, %f]\n",tempStrategy[0],tempStrategy[1]);
     }
+    double nash[NUM_INFO][NUM_ACTIONS] = {{0.9,0.1},{0.666666,0.333334},{1,0},{1,0}, \
+                                            {1,0},{1,0},{0.666666,0.333334},{0.5666666,0.4333334},\
+                                            {0.7,0.3},{0,1},{0,1},{0,1}};
+
+    printf("EV: %f\n",ev(myStrat, myStrat, 0));
+    //printf("EV: %f\n",ev(nash, nash, 0));
+    free(tempStrategy);
 }
 
 int main() {
     // Initialise the random number generator
     srand(time(NULL));
     pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&rng);
-    cfr(10000000); //iterations
+    cfr(1000000); //iterations
     return 0;
 }
