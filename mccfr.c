@@ -20,18 +20,12 @@
 // Number of players in the game
 #define NUM_PLAYERS 2
 
-// Utility values for each player in each possible game outcome
-const double UTILITIES[3][3] = {
-    { 1, -1 },
-    { -1, 1 },
-    { 0, 0 }
-};
-
 // Initialise the strategy and regret arrays to 0
 double strategy[NUM_INFO][NUM_ACTIONS] = {0};
 double strategy_sum[NUM_INFO][NUM_ACTIONS] = {0};
 double regrets[NUM_INFO][NUM_ACTIONS] = {0};
 pcg32_random_t rng;
+double brStrategy[NUM_INFO][NUM_ACTIONS] = {0};
 
 static inline uint32_t random_bounded_divisionless(uint32_t range) {
     uint64_t random32bit, multiresult;
@@ -212,6 +206,127 @@ double ev(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTIONS], ui
         }
     }
     return exp;
+}
+
+double calc_best_response(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot, unsigned short traversing_player, double prob, double player[NUM_INFO][NUM_ACTIONS]){
+    int plays = strlen(history);
+    int acting_player = plays % 2;
+    int opponent_player = 1 - acting_player;
+    if (plays >= 2){ //Check payoff if history not 0, 1
+        if (history[plays-1] == '0' && history[plays-2] == '1'){ //bet fold or pass bet fold
+            return -1;
+        }
+        if ((history[plays-1] == '0' && history[plays-2] == '0') || (history[plays-1] == '1' && history[plays-2] == '1')){ //check check, bet call or check bet call, go to showdown
+            if ((history[plays-1] == '0' && history[plays-2] == '0')){
+                pot = 1;
+            }else{
+                pot = 2;
+            }
+            if (cards[acting_player] < cards[opponent_player]){
+                return pot;
+            }
+            else{
+                return -pot;
+            }
+        }
+    }
+    char next_history[MAX_HISTORY_LENGTH+2]={'\0'};
+    char temp[MAX_HISTORY_LENGTH+2]={'\0'};
+    char tempHistory[MAX_HISTORY_LENGTH]={'\0'};
+    char infoset[MAX_HISTORY_LENGTH+2]={'\0'};
+    char actionStr[2]={'\0'};
+    char cardStr[2]={'\0'};
+
+    double tempStrategy[NUM_ACTIONS] = {0};
+    double util[NUM_ACTIONS] = {0};
+    double node_util = 0;
+    strcpy(tempHistory, history);
+    sprintf(cardStr, "%hu", cards[acting_player]);
+    strcat(infoset,cardStr);
+    strcat(infoset, tempHistory);
+    int infoIndex = getInfoIndex(infoset);
+    double brVal = 0;
+
+    if (acting_player == traversing_player){
+        for (int b=0; b<NUM_ACTIONS; b++){
+            strcpy(tempHistory, history);
+            sprintf(actionStr, "%d", b);
+            strcpy(next_history, strcat(tempHistory, actionStr));
+            strcpy(temp,next_history);
+            pot += b;
+            util[b] = calc_best_response(cards, next_history, pot, traversing_player,prob,player);
+        }
+        brVal = fmax(util[0],util[1]);
+        brStrategy[infoIndex][0] += prob * util[0];
+        brStrategy[infoIndex][1] += prob * util[1];
+        return -brVal;
+    }
+    else{
+        double norm = 0;
+        for (int b=0; b<NUM_ACTIONS; b++){
+            norm += player[infoIndex][b];
+        }
+        for (int b=0; b<NUM_ACTIONS; b++){
+            tempStrategy[b] = player[infoIndex][b]/norm;
+        }
+        
+        for (int b=0; b<NUM_ACTIONS; b++){
+            strcpy(tempHistory, history);
+            sprintf(actionStr, "%d", b);
+            strcpy(next_history, strcat(tempHistory, actionStr));
+            strcpy(temp,next_history);
+            pot += b;
+            util[b] = calc_best_response(cards, next_history, pot, traversing_player,tempStrategy[b]*prob,player);
+            node_util += tempStrategy[b] * util[b];
+        }
+        return -node_util;
+    }
+}
+
+void best_response(double player[NUM_INFO][NUM_ACTIONS]){
+    uint32_t total_cards = 0;
+    total_cards = NUM_CARDS;
+    // Initialise cards
+    unsigned short cards[2] = {0};
+    uint32_t deck[NUM_CARDS] = {0};
+    char history[MAX_HISTORY_LENGTH]={'\0'};
+    char flopHistory[MAX_HISTORY_LENGTH]={'\0'};
+    for (uint32_t i = 0; i < total_cards; i++)
+    {
+        deck[i] = i;
+    }
+    for (uint32_t g = 0; g < total_cards; g++)
+    {
+        for (uint32_t h = 0; h < total_cards; h++)
+        {
+            if (g!=h ){
+                for (uint32_t i=0; i<2; i++){ //Number of players is two
+                    cards[0] = g;
+                    cards[1] = h;
+                    calc_best_response(cards, history, 2, i, 1, player);
+                }
+            }
+            
+        }
+    }
+    uint32_t ind = 0;
+    double temp = 0;
+    for (uint32_t i=0; i<NUM_INFO; i++){
+        for (uint32_t j=0; j<NUM_ACTIONS; j++){
+            if (temp < brStrategy[i][j]){  
+                temp = brStrategy[i][j];
+                ind = j;
+            }
+        }
+        for (uint32_t j=0; j<NUM_ACTIONS; j++){
+            if (j == ind){  
+                brStrategy[i][j] = 1;
+            }
+            else{
+                brStrategy[i][j] = 0;
+            }
+        }
+    }
 }
 
 double external_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot, int traversing_player){
