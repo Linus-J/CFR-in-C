@@ -340,6 +340,7 @@ void best_response(double player[NUM_INFO][NUM_ACTIONS]){
     uint32_t ind = 0;
     double temp = 0;
     for (uint32_t i=0; i<NUM_INFO; i++){
+        temp = -100000;
         for (uint32_t j=0; j<NUM_ACTIONS; j++){
             if (temp < brStrategy[i][j]){  
                 temp = brStrategy[i][j];
