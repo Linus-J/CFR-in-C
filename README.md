@@ -1,6 +1,6 @@
 ## Counterfactual Regret Minimization lightweight C implementation
 ### Description:
-Repository for CFR algorithms written in C to optimise execution speeds for each implementation. So far MCCFR (Monte Carlo Counterfactual Regret Minimization), Vanilla CFR, CFR+ and DCFR (Discounted Counterfactual Regret Minimization) have been implemented in this repository to solve [Kuhn Poker](https://en.wikipedia.org/wiki/Kuhn_poker "Kuhn Poker").
+Repository for CFR algorithms written in C to optimise execution speeds for each implementation. So far MCCFR (Monte Carlo Counterfactual Regret Minimization), Vanilla CFR, CFR+ and DCFR (Discounted Counterfactual Regret Minimization) have been implemented in this repository to solve [Kuhn Poker](https://en.wikipedia.org/wiki/Kuhn_poker "Kuhn Poker"). Additionally the DCFR algorithm has been implented to solve a variant of Leduc Poker, which is a larger game than Kuhn poker. Functions to calculate exploitability in both settings are also included. A perfect mapping function is implemeted for each CFR setting that allocates each information set to a value in a 2D array that is used to efficiently access the strategies for both players in Kuhn and Leduc Poker. The future aim is to expand the implementation of DCFR to Flop Hold'em, Limit Texas Hold'em and finally No-Limit Texas Hold'em.
 
 ### Installation instructions:
 #### Step 1: [Clone the repo]
@@ -11,11 +11,11 @@ Repository for CFR algorithms written in C to optimise execution speeds for each
 
 `make` to compile all variants, or:
 
-`make cfr` / `make cfrplus` / `make mccfr` / `make dcfr` 
+`make cfr` / `make cfrplus` / `make mccfr` / `make dcfr` / `make dcfrLeduc` 
 
 #### Step 3: [Execute]
 
-`./cfr` / `./cfrplus` / `./mccfr` / `./dcfr` 
+`./cfr` / `./cfrplus` / `./mccfr` / `./dcfr` / `./dcfrLeduc` 
 
 #### Note:
 
