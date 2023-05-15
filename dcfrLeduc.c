@@ -6,6 +6,7 @@
 #include <time.h>
 #include <assert.h>
 #include <stdbool.h>
+#include "pcg/pcg_basic.h"
 
 // Number of actions for each player at each stage of the game
 #define NUM_ACTIONS 3
@@ -35,10 +36,17 @@ double strategy[NUM_INFO][NUM_ACTIONS] = {0};
 double strategy_sum[NUM_INFO][NUM_ACTIONS] = {0};
 double regrets[NUM_INFO][NUM_ACTIONS] = {0};
 double tempRegrets[NUM_INFO][NUM_ACTIONS] = {0};
+pcg32_random_t rng;
 
 // Final computed strategies
 double brStrategy[NUM_INFO][NUM_ACTIONS] = {0};
 //double finalStrategy[NUM_INFO][NUM_ACTIONS] = {0};
+static inline uint32_t random_bounded_divisionless(uint32_t range) {
+    uint64_t random32bit, multiresult;
+    random32bit =  pcg32_random_r(&rng);
+    multiresult = random32bit * range;
+    return multiresult >> 32;
+}
 
 int getInfoIndex(char infoStr[MAX_HISTORY_LENGTH], char flopStr[MAX_HISTORY_LENGTH], int flopLength){
     //Perfect mapping of infoset to index, DOMAIN SPECIFIC TO VANILLA LEDUC POKER
@@ -299,7 +307,7 @@ void save_strategy(double player[NUM_INFO][NUM_ACTIONS]){
     fclose(fptr);
 }
 
-void load_strategy(double **player){
+void load_strategy(double (*player)[NUM_ACTIONS]){
     FILE *fptr;
     uint32_t validActions = 0;
     fptr = fopen("leducstrat.txt","r");
@@ -312,10 +320,6 @@ void load_strategy(double **player){
         printf("Error allocating memory\n");
         fclose(fptr);
         return;
-    }
-    // set the pointers for each row of the 2D array
-    for (int i = 0; i < NUM_INFO; i++) {
-        player[i] = &data[i * 3];
     }
     int row = 0;
     while (!feof(fptr) && row < NUM_INFO) {
@@ -394,7 +398,7 @@ int getPayoff(uint32_t cards[3], char oldHistory[MAX_HISTORY_LENGTH], char flopH
     int opponent_player = 1 - acting_player;
     
     //printf("history: %s, acting: %d, plays: %d\n", currentHistory,acting_player, plays);
-    if (currentHistory[plays-1] == '0' && (currentHistory[plays-2] == '1' || currentHistory[plays-2] == '2')){ //not showdown
+    if ((currentHistory[plays-1] == '0' && (currentHistory[plays-2] == '1') || (currentHistory[plays-1] == '0' && currentHistory[plays-2] == '2'))){ //not showdown
         int prevBet = 0;
         if (flopped){
             prevBet = ((currentHistory[plays-2]-'0')>0)*4;
@@ -889,12 +893,12 @@ void cfr(int iterations)
     free(tempStrategy);
 
     printf("Average game value: %f\n", (util[0]/iterations));
-    //save_strategy(myStrat);
+    save_strategy(myStrat);
     
     best_response(myStrat);
 
-    // printf("EV: %f\n",ev(myStrat, brStrategy, 0));
-    // printf("EV: %f\n",ev(brStrategy, myStrat, 0));
+    printf("EV: %f\n",ev(myStrat, brStrategy, 0));
+    printf("EV: %f\n",ev(brStrategy, myStrat, 0));
     printf("EV: %f\n",ev(myStrat, myStrat, 0));
 
     // infoStr = NULL;
@@ -908,19 +912,32 @@ void cfr(int iterations)
     // free(infoStr);
 }
 
-void playHand(){
+double playHand(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTIONS]){
     // Initialise cards
-    uint32_t cards[NUM_PLAYERS+1] = {5,1,0}; //+1 for flop card
+    uint32_t deck[6] = {0};
+    for (uint32_t i = 0; i < 6; i++)
+    {
+        deck[i] = i;
+    }
+    uint32_t temp = 0;
+    for (int j=6; j>1; j--) {
+        int p = random_bounded_divisionless(j); // number in [0,i)
+        temp = deck[j-1];
+        deck[j-1] = deck[p]; // swap the values at j-1 and p
+        deck[p] = temp;
+    }
+    uint32_t cards[NUM_PLAYERS+1] = {deck[0],deck[1],deck[2]}; //+1 for flop card
     char history[MAX_HISTORY_LENGTH]={'\0'};
     char flopHistory[MAX_HISTORY_LENGTH]={'\0'};
     char currentHistory[2*MAX_HISTORY_LENGTH]={'\0'};
     int pot = 2;
     int actions[MAX_HISTORY_LENGTH]={0,1,2,1,0,1,0};
+    uint32_t acting_player = 0;
     while(!isTerminal(currentHistory)){
         uint32_t plays = strlen(history);
-        uint32_t acting_player = plays % 2;
+        acting_player = plays % 2;
         uint32_t opponent_player = 1 - acting_player;
-        printf("%s + %s\n",history, flopHistory);
+        //printf("%s + %s\n",history, flopHistory);
         bool flopped = (isFlop(history) || flopHistory[0]!='\0');
         char next_history[MAX_HISTORY_LENGTH+2]={'\0'};
         char tempHistory[MAX_HISTORY_LENGTH]={'\0'};
@@ -946,9 +963,10 @@ void playHand(){
                 }
             }
         }
-        int action = actions[plays];
+        int action = rand() % validActions;
+        //int action = actions[plays];
         sprintf(actionStr, "%hu", action);
-        printf("acting_player: %hu, acts: %d, %d\n",acting_player,validActions, action);
+        //printf("acting_player: %hu, acts: %d, %d\n",acting_player,validActions, action);
         strcpy(tempHistory, "");
         if (flopped){
             strcat(flopHistory, actionStr);
@@ -962,23 +980,34 @@ void playHand(){
         strcat(currentHistory,history);
         strcat(currentHistory,flopHistory);
     }
-    printf("%s + %s\n",history, flopHistory);
-    printf("Pot: %d\n",pot);
-    printf("Cards: %d, %d\n",cards[0], cards[1]);
-    printf("Pay: %d\n",getPayoff(cards,history,flopHistory,pot));
+    pot = getPayoff(cards,history,flopHistory,pot);//*(acting_player == 0 ? 1 : -1);
+    //printf("Cards: %hu, %hu, %hu\n",cards[0], cards[1], cards[2]);
+    // printf("%s + %s\n",history, flopHistory);
+    // printf("Pot: %d\n",pot);
+    return pot;
 }
 
 int main() {
     // Initialise the random number generator
-    srand(time(NULL));
-    //playHand();
-
-    cfr(100000); //iterations
+    srand(time(NULL)); 
+    pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&rng);
     
-    // uint32_t validActions = 0;
-    // double myStrat[NUM_INFO][NUM_ACTIONS] = {0};
-    // // double **my_array = (double **) malloc(NUM_INFO * sizeof(double *));
-    // // load_strategy(my_array);
+
+    //cfr(10000); //iterations
+    
+    uint32_t validActions = 0;
+    double myStrat[NUM_INFO][NUM_ACTIONS] = {0};
+    
+    load_strategy(myStrat);
+    best_response(myStrat);
+    printf("EV: %f\n",ev(myStrat, myStrat, 0));
+    double pay = 0, T = 1000000;
+    for (int i=0; i<T; i++){
+        //printf("New hand\n");
+        pay += playHand(myStrat,brStrategy);
+    }
+    printf("Pay: %f\n",pay/T);
+
     // for (int i=0; i<NUM_INFO; i++){
     //     validActions = validActInf(i);
     //     printf("%d: ",i);
