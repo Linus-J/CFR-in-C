@@ -406,10 +406,10 @@ int getPayoff(uint32_t cards[3], char oldHistory[MAX_HISTORY_LENGTH], char flopH
         else{
             prevBet = ((currentHistory[plays-2] - '0')>0)*2;
         }
-        if (acting_player==0)
-            return (pot-prevBet)/2;
-        else
-            return -(pot-prevBet)/2;
+        //if (acting_player==0)
+        return (pot-prevBet)/2;
+        // else
+        //     return -(pot-prevBet)/2;
     }
     if (cards[acting_player]%3 == cards[2]%3){
         return pot/2;
@@ -417,6 +417,10 @@ int getPayoff(uint32_t cards[3], char oldHistory[MAX_HISTORY_LENGTH], char flopH
     else if (cards[opponent_player]%3 == cards[2]%3){
         return -pot/2;
     }
+    if (cards[acting_player]%3 == cards[opponent_player]%3){
+        return 0;
+    }
+    //changed to >= from >
     if (cards[acting_player]%3 > cards[opponent_player]%3){
         return pot/2;
     }
@@ -453,6 +457,10 @@ double cbr(uint32_t cards[3], double p0, double p1,  char history[MAX_HISTORY_LE
         plays = strlen(currentHistory);
         acting_player = plays % 2;
         opponent_player = 1 - acting_player;
+    }
+    if (isFlop(history)){
+        p0*=0.25;
+        p1*=0.25;
     }
     double tempStrategy[NUM_ACTIONS] = {0};
     double util[NUM_ACTIONS] = {0};
@@ -493,9 +501,11 @@ double cbr(uint32_t cards[3], double p0, double p1,  char history[MAX_HISTORY_LE
             pot += b*4; 
             if (acting_player == 0){
                 util[b] = -1*cbr(cards, p0*tempStrategy[b], p1, history, pot, traversing_player, next_history, player);
+                util[b] = (util[b] == 0) ? pot/2 : util[b];
             }
             else{
                 util[b] = -1*cbr(cards, p0, p1*tempStrategy[b], history, pot, traversing_player, next_history, player);
+                util[b] = (util[b] == 0) ? pot/2 : util[b];
             }
         }
         else{
@@ -505,9 +515,11 @@ double cbr(uint32_t cards[3], double p0, double p1,  char history[MAX_HISTORY_LE
             pot += b*2; 
             if (acting_player == 0){
                 util[b] = -1*cbr(cards, p0*tempStrategy[b], p1, next_history, pot, traversing_player, flopHistory, player);
+                util[b] = (util[b] == 0) ? pot/2 : util[b];
             }
             else{  
                 util[b] = -1*cbr(cards, p0, p1*tempStrategy[b], next_history, pot, traversing_player, flopHistory, player);
+                util[b] = (util[b] == 0) ? pot/2 : util[b];
             }
         }
         node_util += tempStrategy[b] * util[b];
@@ -549,7 +561,7 @@ void best_response(double player[NUM_INFO][NUM_ACTIONS]){
                             cards[0] = f;
                             cards[1] = g;
                             cards[2] = h;
-                            util[i] += ((double)1/120)*cbr(cards, 1, 1, history, 2, i, flopHistory, player);
+                            util[i] += ((double)1/30)*cbr(cards, 1, 1, history, 2, i, flopHistory, player);
                         }
                     }
                 }
@@ -631,14 +643,18 @@ double calc_ev(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot, uin
     }
     double util = 0;
     double tempStrat[NUM_ACTIONS] = {0};
+    double p = 1;
+    if (isFlop(history)){
+        p=0.25;
+    }
     if (traversing_player==0){
         for (uint32_t i=0; i<validActions; i++){
-            tempStrat[i] = p1[infoIndex][i];
+            tempStrat[i] = p1[infoIndex][i]*p;
         }
     }
     else{
         for (uint32_t i=0; i<validActions; i++){
-            tempStrat[i] = p2[infoIndex][i];
+            tempStrat[i] = p2[infoIndex][i]*p;
         }
     }
     if (infoIndex>NUM_INFO){
@@ -657,6 +673,7 @@ double calc_ev(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot, uin
             strcpy(next_history, tempHistory);
             pot += b*4;
             vals[b] = calc_ev(cards, history, pot, 1-traversing_player, next_history, p1, p2);
+            vals[b] = (vals[b] == 0) ? -pot/2 : vals[b];
         }
         else{
             strcpy(tempHistory, history);
@@ -664,6 +681,7 @@ double calc_ev(uint32_t cards[3], char history[MAX_HISTORY_LENGTH], int pot, uin
             strcpy(next_history, tempHistory);
             pot += b*2; 
             vals[b] = calc_ev(cards, next_history, pot, 1-traversing_player, flopHistory, p1, p2);
+            vals[b] = (vals[b] == 0) ? -pot/2 : vals[b];
         }
         util += vals[b]*tempStrat[b]; 
         //printf("util: %f\n",util);
@@ -695,7 +713,7 @@ double ev(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTIONS], ui
                         cards[0] = f;
                         cards[1] = g;
                         cards[2] = h;
-                        evalue += ((double)1/120)*calc_ev(cards, history, 2, traversing_player, flopHistory, p1, p2);
+                        evalue += ((double)1/30)*calc_ev(cards, history, 2, traversing_player, flopHistory, p1, p2);
                         //printf("%f\n",evalue);
                     }
                 }
@@ -718,6 +736,10 @@ double vanilla_cfr(uint32_t cards[3], double p0, double p1,  char history[MAX_HI
         return getPayoff(cards,history,flopHistory,pot);
     }
     bool flopped = (isFlop(history) || flopHistory[0]!='\0');
+    if (isFlop(history)){
+        p0*=0.25;
+        p1*=0.25;
+    }
     char next_history[MAX_HISTORY_LENGTH+2]={'\0'};
     char tempHistory[MAX_HISTORY_LENGTH]={'\0'};
     char infoset[MAX_HISTORY_LENGTH+2]={'\0'};
@@ -777,9 +799,11 @@ double vanilla_cfr(uint32_t cards[3], double p0, double p1,  char history[MAX_HI
             pot += b*4; 
             if (acting_player == 0){
                 util[b] = -1*vanilla_cfr(cards, p0*tempStrategy[b], p1, history, pot, traversing_player, t, next_history);
+                util[b] = (util[b] == 0) ? pot/2 : util[b];
             }
             else{
                 util[b] = -1*vanilla_cfr(cards, p0, p1*tempStrategy[b], history, pot, traversing_player, t, next_history);
+                util[b] = (util[b] == 0) ? pot/2 : util[b];
             }
         }
         else{
@@ -789,9 +813,11 @@ double vanilla_cfr(uint32_t cards[3], double p0, double p1,  char history[MAX_HI
             pot += b*2; 
             if (acting_player == 0){
                 util[b] = -1*vanilla_cfr(cards, p0*tempStrategy[b], p1, next_history, pot, traversing_player, t, flopHistory);
+                util[b] = (util[b] == 0) ? pot/2 : util[b];
             }
             else{  
                 util[b] = -1*vanilla_cfr(cards, p0, p1*tempStrategy[b], next_history, pot, traversing_player, t, flopHistory);
+                util[b] = (util[b] == 0) ? pot/2 : util[b];
             }
         }
         node_util += tempStrategy[b] * util[b];
@@ -834,7 +860,7 @@ void cfr(int iterations)
                                 cards[1] = g;
                                 cards[2] = h;
                                 //printf("C:[%hu, %hu], F:[%hu]\n",f,g,h);
-                                util[i] += ((double)1/120)*vanilla_cfr(cards, 1, 1, history, 2, i, t, flopHistory);
+                                util[i] += ((double)1/30)*vanilla_cfr(cards, 1, 1, history, 2, i, t, flopHistory);
                                 //printf("%f\n",util[i]);
                             }
                         }
@@ -926,12 +952,13 @@ double playHand(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTION
         deck[j-1] = deck[p]; // swap the values at j-1 and p
         deck[p] = temp;
     }
-    uint32_t cards[NUM_PLAYERS+1] = {deck[0],deck[1],deck[2]}; //+1 for flop card
+    //uint32_t cards[NUM_PLAYERS+1] = {deck[0],deck[1],deck[2]}; //+1 for flop card
+    uint32_t cards[NUM_PLAYERS+1] = {0,3,2};
     char history[MAX_HISTORY_LENGTH]={'\0'};
     char flopHistory[MAX_HISTORY_LENGTH]={'\0'};
     char currentHistory[2*MAX_HISTORY_LENGTH]={'\0'};
     int pot = 2;
-    int actions[MAX_HISTORY_LENGTH]={0,1,2,1,0,1,0};
+    //int actions[MAX_HISTORY_LENGTH]={0,1,2,1,0,1,0};
     uint32_t acting_player = 0;
     while(!isTerminal(currentHistory)){
         uint32_t plays = strlen(history);
@@ -950,12 +977,15 @@ double playHand(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTION
             acting_player = plays % 2;
             opponent_player = 1 - acting_player;
         }
+        int infoIndex = 0;
         uint32_t validActions = 2;
         if (flopped){
+            infoIndex = getInfoIndex(infoset,flopInfoset,strlen(flopInfoset));
             if (flopHistory[strlen(flopHistory)-1]=='1'){
                 validActions = 3;
             }
         }else{
+            infoIndex = getInfoIndex(infoset,NULL,0);
             uint32_t tplays = strlen(history); //maybe redundant variable
             if (tplays>0){
                 if (history[tplays-1]=='1'){
@@ -963,7 +993,25 @@ double playHand(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTION
                 }
             }
         }
-        int action = rand() % validActions;
+        int action = 0;
+        double p = (double)rand() / RAND_MAX;
+        double cumulativeSum = 0;
+        
+        for (action=0; action<NUM_ACTIONS; action++){
+            if (acting_player == 0){
+                cumulativeSum += p1[infoIndex][action];
+                //printf("p1 strat: %f, %f, %f\n",p1[infoIndex][0], p1[infoIndex][1], p1[infoIndex][2]);
+            }
+            else{
+                cumulativeSum += p2[infoIndex][action];
+                //printf("p2 strat: %f, %f, %f\n",p2[infoIndex][0], p2[infoIndex][1], p2[infoIndex][2]);
+            }
+            
+            if (p<=cumulativeSum){
+                //printf("p=%f, action=%d\n",p,action);
+                break;
+            }
+        }
         //int action = actions[plays];
         sprintf(actionStr, "%hu", action);
         //printf("acting_player: %hu, acts: %d, %d\n",acting_player,validActions, action);
@@ -980,11 +1028,18 @@ double playHand(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTION
         strcat(currentHistory,history);
         strcat(currentHistory,flopHistory);
     }
-    pot = getPayoff(cards,history,flopHistory,pot);//*(acting_player == 0 ? 1 : -1);
-    //printf("Cards: %hu, %hu, %hu\n",cards[0], cards[1], cards[2]);
-    // printf("%s + %s\n",history, flopHistory);
-    // printf("Pot: %d\n",pot);
-    return pot;
+    // int pay = 0;
+    // pay = getPayoff(cards,history,flopHistory,pot)*(acting_player == 0 ? 1 : -1);
+    
+    int pay = getPayoff(cards,history,flopHistory,pot);
+    // pay = (pay == 0) ? -pot/2 : pay;
+    pay = pay*(acting_player == 0 ? -1 : 1);
+    
+    printf("Pot: %d\n",pot);
+    printf("Cards: %hu, %hu, %hu\n",cards[0], cards[1], cards[2]);
+    printf("%s + %s\n",history, flopHistory);
+    printf("Pay: %d\n",pay);
+    return pay;
 }
 
 int main() {
@@ -993,18 +1048,22 @@ int main() {
     pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&rng);
     
 
-    //cfr(10000); //iterations
+    cfr(1); //iterations
     
     uint32_t validActions = 0;
     double myStrat[NUM_INFO][NUM_ACTIONS] = {0};
     
     load_strategy(myStrat);
     best_response(myStrat);
+
+    printf("EV: %f\n",ev(myStrat, brStrategy, 0));
+    printf("EV: %f\n",ev(brStrategy, myStrat, 0));
     printf("EV: %f\n",ev(myStrat, myStrat, 0));
-    double pay = 0, T = 1000000;
+
+    double pay = 0, T = 10;
     for (int i=0; i<T; i++){
         //printf("New hand\n");
-        pay += playHand(myStrat,brStrategy);
+        pay += playHand(myStrat,myStrat);
     }
     printf("Pay: %f\n",pay/T);
 
