@@ -2,7 +2,7 @@ C_SOURCES = $(wildcard pcg/*.c)
 HEADERS = $(wildcard pcg/*.h)
 OBJ = ${C_SOURCES:.c=.o}
 CFLAGS = -O2
-EXECUTABLES = cfr mccfr dcfr dcfrLeduc cfrplus
+EXECUTABLES = cfr mccfr dcfr dcfrLeduc cfrplus test_cfr
 
 MAIN = all
 CC = /usr/bin/gcc
@@ -25,9 +25,15 @@ dcfrLeduc: dcfrLeduc.o $(OBJ)
 cfrplus: cfrplus.o $(OBJ)
 	${CC} ${CFLAGS} $^ -o $@ -lm
 
+test_cfr: test_cfr.o $(OBJ)
+	${CC} ${CFLAGS} $^ -o $@ -lm
+
+test: test_cfr
+	./test_cfr
+
 # Generic rules
 %.o: %.c ${HEADERS}
 	${CC} ${CFLAGS} -c $< -o $@ -lm
 
 clean:
-	rm pcg/*.o *.o $(EXECUTABLES)
+	rm -f pcg/*.o *.o $(EXECUTABLES)
