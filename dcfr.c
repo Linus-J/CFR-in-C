@@ -156,7 +156,10 @@ void load_strategy(double **player){
     int row = 0;
     while (!feof(fptr) && row < NUM_INFO) {
         double value1=0, value2=0;        
-        if (fscanf(fptr, "%lf,%lf\n", &value1, &value2) != 2) break;
+        if (fscanf(fptr, "%lf,%lf\n", &value1, &value2) != 2) {
+            printf("Error reading strategy from file at row %d\n", row);
+            break;
+        }
         player[row][0] = value1;
         player[row][1] = value2;
         row++;

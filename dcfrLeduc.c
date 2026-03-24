@@ -326,12 +326,18 @@ void load_strategy(double (*player)[NUM_ACTIONS], char filename[100]){
         double value1=0, value2=0, value3=0;
         validActions = validActInf(row);
         if (validActions==2){
-            if (fscanf(fptr, "%lf,%lf\n", &value1, &value2) != 2) break;
+            if (fscanf(fptr, "%lf,%lf\n", &value1, &value2) != 2) {
+                printf("Error reading strategy from file at row %d\n", row);
+                break;
+            }
             player[row][0] = value1;
             player[row][1] = value2;
         }
         else{
-            if (fscanf(fptr, "%lf,%lf,%lf\n", &value1, &value2, &value3) != 3) break;
+            if (fscanf(fptr, "%lf,%lf,%lf\n", &value1, &value2, &value3) != 3) {
+                printf("Error reading strategy from file at row %d\n", row);
+                break;
+            }
             player[row][0] = value1;
             player[row][1] = value2;
             player[row][2] = value3;
