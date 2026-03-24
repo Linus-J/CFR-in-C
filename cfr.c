@@ -153,7 +153,10 @@ void load_strategy(double **player){
     int row = 0;
     while (!feof(fptr) && row < NUM_INFO) {
         double value1=0, value2=0;        
-        fscanf(fptr, "%lf,%lf", &value1, &value2);
+        if (fscanf(fptr, "%lf,%lf\n", &value1, &value2) != 2) {
+            printf("Error reading strategy from file at row %d\n", row);
+            break;
+        }
         player[row][0] = value1;
         player[row][1] = value2;
         row++;
@@ -194,7 +197,7 @@ double calcEv(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot
     double util[NUM_ACTIONS] = {0};
     double node_util = 0;
     strcpy(tempHistory, history);
-    sprintf(cardStr, "%hu", cards[traversing_player]);
+    sprintf(cardStr, "%hu", cards[acting_player]);
     strcat(infoset,cardStr);
     strcat(infoset, tempHistory);
     int infoIndex = getInfoIndex(infoset);
@@ -208,7 +211,9 @@ double calcEv(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot
         strat[1] = p2[infoIndex][1];
     }
 
+    int pot_before = pot;
     for (int b=0; b<NUM_ACTIONS; b++){
+        pot = pot_before;
         strcpy(tempHistory, history);
         sprintf(actionStr, "%d", b);
         strcat(tempHistory, actionStr);
@@ -284,7 +289,9 @@ double cbr(unsigned short cards[2], double p0, double p1, char history[MAX_HISTO
     int infoIndex = getInfoIndex(infoset);
     tempStrategy[0] = player[infoIndex][0];
     tempStrategy[1] = player[infoIndex][1];
+    int pot_before = pot;
     for (int b=0; b<NUM_ACTIONS; b++){
+        pot = pot_before;
         strcpy(tempHistory, history);
         sprintf(actionStr, "%d", b);
         strcpy(next_history, strcat(tempHistory, actionStr));
@@ -408,7 +415,9 @@ double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], in
         //strcpy(infoset,strcat(cardStr,tempHistory));
         int infoIndex = getInfoIndex(infoset);
         compute_strategy(infoIndex,&tempStrategy); //want to put infoset instead of cards, need a map from infoset to int
+        int pot_before = pot;
         for (int b=0; b<NUM_ACTIONS; b++){
+            pot = pot_before;
             strcpy(tempHistory, history);
             sprintf(actionStr, "%d", b);
             strcpy(next_history, strcat(tempHistory, actionStr));
