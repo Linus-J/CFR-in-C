@@ -26,7 +26,6 @@ double tempRegrets[NUM_INFO][NUM_ACTIONS] = {0};
 double brStrategy[NUM_INFO][NUM_ACTIONS] = {0};
 
 int getInfoIndex(char infoStr[MAX_HISTORY_LENGTH]){
-    //Perfect mapping of infoset to index, DOMAIN SPECIFIC TO VANILLA KUHN POKER
     int length = strlen(infoStr);
     int index = 0;
     switch(length){
@@ -43,13 +42,10 @@ int getInfoIndex(char infoStr[MAX_HISTORY_LENGTH]){
     return index;
 }
 
-// Helper function to compute the current strategy for a given player and card
 void *compute_strategy(int infoIndex, double **tempStrategy, double realizationWeight, double t)
 {
     free(*tempStrategy);
     *tempStrategy = malloc(NUM_ACTIONS * sizeof(double));
-    // Compute the normalizing factor
-    
     double normalizing_factor = 0;
     for (int i = 0; i < NUM_ACTIONS; i++)
     {
@@ -64,10 +60,10 @@ void *compute_strategy(int infoIndex, double **tempStrategy, double realizationW
 
     for (int i = 0; i < NUM_ACTIONS; i++)
     {
-        if (normalizing_factor > 0){ // If the normalizing factor is > 0, compute the strategy as the regret-matched strategy
+        if (normalizing_factor > 0){
             strategy[infoIndex][i] /= normalizing_factor;
         }
-        else{ // Otherwise, the strategy is uniformly random
+        else{
             strategy[infoIndex][i] = 1.0 / NUM_ACTIONS;
         }
         if (realizationWeight != -1){
@@ -146,7 +142,6 @@ void load_strategy(double **player){
         fclose(fptr);
         return;
     }
-    // set the pointers for each row of the 2D array
     for (int i = 0; i < NUM_INFO; i++) {
         player[i] = &data[i * 2];
     }
@@ -168,11 +163,11 @@ double calcEv(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], int pot
     int plays = strlen(history);
     int acting_player = plays % 2;
     int opponent_player = 1 - acting_player;
-    if (plays >= 2){ //Check payoff if history not 0, 1
-        if (history[plays-1] == '0' && history[plays-2] == '1'){ //bet fold or pass bet fold
+    if (plays >= 2){
+        if (history[plays-1] == '0' && history[plays-2] == '1'){
             return 1;
         }
-        if ((history[plays-1] == '0' && history[plays-2] == '0') || (history[plays-1] == '1' && history[plays-2] == '1')){ //check check, bet call or check bet call, go to showdown
+        if ((history[plays-1] == '0' && history[plays-2] == '0') || (history[plays-1] == '1' && history[plays-2] == '1')){
             if ((history[plays-1] == '0' && history[plays-2] == '0')){
                 pot = 1;
             }else{
@@ -254,11 +249,11 @@ double cbr(unsigned short cards[2], double p0, double p1, char history[MAX_HISTO
     int plays = strlen(history);
     int acting_player = plays % 2;
     int opponent_player = 1 - acting_player;
-    if (plays >= 2){ //Check payoff if history not 0, 1
-        if (history[plays-1] == '0' && history[plays-2] == '1'){ //bet fold or pass bet fold
+    if (plays >= 2){
+        if (history[plays-1] == '0' && history[plays-2] == '1'){
             return 1;
         }
-        if ((history[plays-1] == '0' && history[plays-2] == '0') || (history[plays-1] == '1' && history[plays-2] == '1')){ //check check, bet call or check bet call, go to showdown
+        if ((history[plays-1] == '0' && history[plays-2] == '0') || (history[plays-1] == '1' && history[plays-2] == '1')){
             if ((history[plays-1] == '0' && history[plays-2] == '0')){
                 pot = 1;
             }else{
@@ -281,7 +276,6 @@ double cbr(unsigned short cards[2], double p0, double p1, char history[MAX_HISTO
     double tempStrategy[NUM_ACTIONS] = {0};
     double util[NUM_ACTIONS] = {0};
     double node_util = 0;
-    //double brVal = 0;
     strcpy(tempHistory, history);
     sprintf(cardStr, "%hu", cards[acting_player]);
     strcat(infoset,cardStr);
@@ -306,7 +300,6 @@ double cbr(unsigned short cards[2], double p0, double p1, char history[MAX_HISTO
         
         node_util += tempStrategy[b] * util[b];
     }
-    //brVal = fmax(util[0],util[1]);
     if (acting_player == 0){
         brStrategy[infoIndex][0] += p0 * util[0];
         brStrategy[infoIndex][1] += p0 * util[1];
@@ -321,7 +314,6 @@ double cbr(unsigned short cards[2], double p0, double p1, char history[MAX_HISTO
 void best_response(double player[NUM_INFO][NUM_ACTIONS]){
     uint32_t total_cards = 0;
     total_cards = NUM_CARDS;
-    // Initialise cards
     unsigned short cards[2] = {0};
     char history[MAX_HISTORY_LENGTH]={'\0'};
     char flopHistory[MAX_HISTORY_LENGTH]={'\0'};
@@ -333,7 +325,7 @@ void best_response(double player[NUM_INFO][NUM_ACTIONS]){
     for (uint32_t g = 0; g < total_cards; g++){
         for (uint32_t h = 0; h < total_cards; h++){
             if (g!=h){
-                for (uint32_t i=0; i<2; i++){ //Number of players is two
+                for (uint32_t i=0; i<2; i++){
                     cards[0] = g;
                     cards[1] = h;
                     cbr(cards, 1, 1, history, 2, i, player);
@@ -366,11 +358,11 @@ double vanilla_cfr(unsigned short cards[2], double p0, double p1, char history[M
     int plays = strlen(history);
     int acting_player = plays % 2;
     int opponent_player = 1 - acting_player;
-    if (plays >= 2){ //Check payoff if history not 0, 1
-        if (history[plays-1] == '0' && history[plays-2] == '1'){ //bet fold or pass bet fold
+    if (plays >= 2){
+        if (history[plays-1] == '0' && history[plays-2] == '1'){
             return 1;
         }
-        if ((history[plays-1] == '0' && history[plays-2] == '0') || (history[plays-1] == '1' && history[plays-2] == '1')){ //check check, bet call or check bet call, go to showdown
+        if ((history[plays-1] == '0' && history[plays-2] == '0') || (history[plays-1] == '1' && history[plays-2] == '1')){
             if ((history[plays-1] == '0' && history[plays-2] == '0')){
                 pot = 1;
             }else{
@@ -435,7 +427,6 @@ double vanilla_cfr(unsigned short cards[2], double p0, double p1, char history[M
 
 void cfr(int iterations)
 {
-    // Initialise cards
     unsigned short deck[NUM_CARDS] = {0};
     for (unsigned short i = 0; i < NUM_CARDS; i++)
     {
@@ -446,15 +437,12 @@ void cfr(int iterations)
     int temp = 0;
     char history[MAX_HISTORY_LENGTH]={'\0'};
     for (int t=1; t<iterations + 1; t++){
-        if (t%100000==0){
-            printf("Iteration: %d\n", t);
-        }
         for (unsigned short g = 0; g < NUM_CARDS; g++)
         {
             for (unsigned short h = 0; h < NUM_CARDS; h++)
             {
                 if (g!=h){
-                    for (int i=0; i<2; i++){ //Number of players is two
+                    for (int i=0; i<2; i++){
                         cards[0] = g;
                         cards[1] = h;
                         util[i] += ((double)1/6)*vanilla_cfr(cards, 1, 1, history, 2, i, t);
@@ -474,28 +462,20 @@ void cfr(int iterations)
     double *tempStrategy;
     tempStrategy = NULL;
     for (int i=0; i<NUM_INFO; i++){
-        printf("%d: ", i);
-        //print_avg_strategy(i);
-        //compute_strategy(i, &tempStrategy,-1);
         compute_avg_strategy(i, &tempStrategy);
         myStrat[i][0] = tempStrategy[0];
         myStrat[i][1] = tempStrategy[1];
-        printf("[%f, %f]\n",tempStrategy[0],tempStrategy[1]);
     }
-    // double nash[NUM_INFO][NUM_ACTIONS] = {{0.9,0.1},{0.666666,0.333334},{1,0},{1,0}, \
-    //                                         {1,0},{1,0},{0.666666,0.333334},{0.5666666,0.4333334},\
-    //                                         {0.7,0.3},{0,1},{0,1},{0,1}};
     best_response(myStrat);
     save_strategy(myStrat);
     printf("EV: %f\n",ev(myStrat, brStrategy, 0));
     printf("EV: %f\n",ev(brStrategy, myStrat, 0));
-    //printf("EV: %f\n",ev(nash, nash, 0));
     free(tempStrategy);
 }
 
 int main() {
     // Initialise the random number generator
     srand(time(NULL));
-    cfr(100000); //iterations
+    cfr(100000);
     return 0;
 }
