@@ -474,7 +474,7 @@ double cbr(uint32_t cards[3], double p0, double p1,  char history[MAX_HISTORY_LE
         for (uint32_t h = 0; h < 6; h++){
             if (cards[0]!=h && cards[1]!=h){
                 cards[2] = h;
-                floputil+= -1*cbr(cards, p0*0.25, p1*0.25, history, pot, traversing_player, flopHistory, player);
+                floputil += cbr(cards, p0*0.25, p1*0.25, history, pot, traversing_player, flopHistory, player);
             }
         }
         cards[2]=9;
@@ -574,7 +574,7 @@ void best_response(double player[NUM_INFO][NUM_ACTIONS]){
                 for (uint32_t i=0; i<NUM_PLAYERS; i++){ //Number of players is two
                     cards[0] = f;
                     cards[1] = g;
-                    cards[2] = 10;
+                    cards[2] = 9;
                     util[i] += ((double)1/30)*cbr(cards, 1, 1, history, 2, i, flopHistory, player);
                 }
             }
@@ -761,7 +761,7 @@ double vanilla_cfr(uint32_t cards[3], double p0, double p1,  char history[MAX_HI
         for (uint32_t h = 0; h < 6; h++){
             if (cards[0]!=h && cards[1]!=h){
                 cards[2] = h;
-                floputil += -1*vanilla_cfr(cards, p0*0.25, p1*0.25, history, pot, traversing_player, t, flopHistory);
+                floputil += vanilla_cfr(cards, p0*0.25, p1*0.25, history, pot, traversing_player, t, flopHistory);
             }
         }
         cards[2]=9;
