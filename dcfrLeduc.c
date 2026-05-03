@@ -534,10 +534,10 @@ double cbr(uint32_t cards[3], double p0, double p1,  char history[MAX_HISTORY_LE
     
     for (uint32_t c=0; c<validActions; c++){
         if (acting_player == 0){
-            brStrategy[infoIndex][c] += p0 * util[c];
+            brStrategy[infoIndex][c] += p1 * util[c];  // opponent's (P1's) reach
         }
         else{
-            brStrategy[infoIndex][c] += p1 * util[c];
+            brStrategy[infoIndex][c] += p0 * util[c];  // opponent's (P0's) reach
         }
     }
     return node_util;
@@ -744,7 +744,7 @@ double vanilla_cfr(uint32_t cards[3], double p0, double p1,  char history[MAX_HI
             }
         }
         cards[2]=9;
-        return floputil;
+        return floputil / 4.0;
     }
     char next_history[MAX_HISTORY_LENGTH+2]={'\0'};
     char tempHistory[MAX_HISTORY_LENGTH]={'\0'};
@@ -848,6 +848,9 @@ void cfr(int iterations)
     char history[MAX_HISTORY_LENGTH]={'\0'};
     char flopHistory[MAX_HISTORY_LENGTH]={'\0'};
     for (int t=1; t<iterations + 1; t++){
+        if (t%10000 == 0){
+            printf("Iteration: %d\n", t);
+        }
         for (uint32_t f = 0; f < total_cards; f++)
         {
             for (uint32_t g = 0; g < total_cards; g++)
@@ -1052,9 +1055,9 @@ int main() {
     load_strategy(myStrat,"leducstrat.txt");
     best_response(myStrat);
 
-    printf("EV: %f\n",ev(myStrat, brStrategy, 0));
-    printf("EV: %f\n",ev(brStrategy, myStrat, 0));
-    printf("EV: %f\n",ev(myStrat, myStrat, 0));
+    printf("EV strat vs BR: %f\n",ev(myStrat, brStrategy, 0));
+    printf("EV BR vs strat: %f\n",ev(brStrategy, myStrat, 0));
+    printf("EV strat vs strat: %f\n",ev(myStrat, myStrat, 0));
     
     double pay = 0, T = 1000000;
     double stdpay[1000000]={0};
