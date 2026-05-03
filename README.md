@@ -18,11 +18,19 @@ Repository for CFR algorithms written in C to optimise execution speeds for each
 
 #### Step 3: [Execute]
 
-`./cfr` / `./cfrplus` / `./mccfr` / `./dcfr` / `./dcfrLeduc` 
+Each binary supports two modes: **train** and **evaluate**.
 
-#### Note:
+**Train** — runs the CFR algorithm and saves the resulting strategy to a file:
 
-To change the number of iterations or game type, edit the source code and remake the amended file.
+`./cfr` / `./cfrplus` / `./mccfr` / `./dcfr` / `./dcfrLeduc`
+
+A custom iteration count can be passed as a second argument:
+
+`./cfr train 500000`
+
+**Evaluate** — loads the saved strategy and computes exploitability (best-response EV):
+
+`./cfr evaluate` / `./cfrplus evaluate` / `./mccfr evaluate` / `./dcfr evaluate` / `./dcfrLeduc evaluate`
 
 ### Why C?:
 CFR and other algorithms written for imperfect information games are commonly written in Python. This is great for initially writing up the algorithms in a practical way, however, does have some considerable drawbacks. Often the straightforward implementation involves using abstract data/class structures that result in slow execution times. Python makes it easy to do this and lets us use dynamic variable typing so we don't have to worry about type declaration as the program writer. Python uses PyObjects to allow for dynamic variable typing and is also an interpreted language. These among other things were those qualities that helped us efficiently write out our algorithm in Python, but are now the reasons for slower execution times. 

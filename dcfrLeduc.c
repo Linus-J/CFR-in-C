@@ -304,7 +304,7 @@ void save_strategy(double player[NUM_INFO][NUM_ACTIONS]){
     fclose(fptr);
 }
 
-void load_strategy(double (*player)[NUM_ACTIONS], char filename[100]){
+void load_strategy(double (*player)[NUM_ACTIONS], const char *filename){
     FILE *fptr;
     uint32_t validActions = 0;
     fptr = fopen(filename,"r");
@@ -834,7 +834,7 @@ double vanilla_cfr(uint32_t cards[3], double p0, double p1,  char history[MAX_HI
     return node_util;
 }
 
-void cfr(int iterations)
+void train(int iterations)
 {
     uint32_t total_cards = 0;
     total_cards = NUM_CARDS*NUM_SUITS;
@@ -904,12 +904,6 @@ void cfr(int iterations)
 
     printf("Average game value: %f\n", (util[0]/iterations));
     save_strategy(myStrat);
-    
-    best_response(myStrat);
-
-    printf("EV: %f\n",ev(myStrat, brStrategy, 0));
-    printf("EV: %f\n",ev(brStrategy, myStrat, 0));
-    printf("EV: %f\n",ev(myStrat, myStrat, 0));
 }
 
 double playHand(double p1[NUM_INFO][NUM_ACTIONS], double p2[NUM_INFO][NUM_ACTIONS]){
@@ -1037,39 +1031,40 @@ double calculateStandardDeviation(double array[], int size) {
     return stdDeviation;
 }
 
-int main() {
-    // Initialise the random number generator
-    srand(time(NULL)); 
-    pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&rng);
-    
-
-    cfr(1000000);
-    
-    uint32_t validActions = 0;
-    double randomStrat[NUM_INFO][NUM_ACTIONS] = {0};
-    
-    load_strategy(randomStrat,"randomstrat.txt");
-
+void evaluate() {
     double myStrat[NUM_INFO][NUM_ACTIONS] = {0};
-    
-    load_strategy(myStrat,"leducstrat.txt");
+    load_strategy(myStrat, "leducstrat.txt");
     best_response(myStrat);
+    printf("EV strat vs BR: %f\n", ev(myStrat, brStrategy, 0));
+    printf("EV BR vs strat: %f\n", ev(brStrategy, myStrat, 0));
+    printf("EV strat vs strat: %f\n", ev(myStrat, myStrat, 0));
 
-    printf("EV strat vs BR: %f\n",ev(myStrat, brStrategy, 0));
-    printf("EV BR vs strat: %f\n",ev(brStrategy, myStrat, 0));
-    printf("EV strat vs strat: %f\n",ev(myStrat, myStrat, 0));
-    
+    double randomStrat[NUM_INFO][NUM_ACTIONS] = {0};
+    load_strategy(randomStrat, "randomstrat.txt");
     double pay = 0, T = 1000000;
-    double stdpay[1000000]={0};
-    for (int i=0; i<T; i++){
-        stdpay[i] = playHand(randomStrat,myStrat);
+    double stdpay[1000000] = {0};
+    for (int i = 0; i < T; i++) {
+        stdpay[i] = playHand(myStrat, randomStrat);
         if (stdpay[i] == 100)
             break;
         pay += stdpay[i];
     }
     int size = sizeof(stdpay) / sizeof(stdpay[0]);
     double standardDeviation = calculateStandardDeviation(stdpay, size);
-    printf("Pay: %f\n",pay/T);
-    printf("95 Confidence interval: %f\n",1.96*(standardDeviation)/sqrt(T));
+    printf("Payoff vs random strat: %f\n", pay / T);
+    printf("95 Confidence interval: %f\n", 1.96 * (standardDeviation) / sqrt(T));
+}
+
+int main(int argc, char *argv[]) {
+    // Initialise the random number generator
+    srand(time(NULL));
+    pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&rng);
+    if (argc > 1 && strcmp(argv[1], "evaluate") == 0) {
+        evaluate();
+    } else {
+        int iterations = 1000000;
+        if (argc > 2) iterations = atoi(argv[2]);
+        train(iterations);
+    }
     return 0;
 }

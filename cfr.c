@@ -449,7 +449,7 @@ double vanilla_cfr(unsigned short cards[2], char history[MAX_HISTORY_LENGTH], in
     }
 }
 
-void cfr(int iterations)
+void train(int iterations)
 {
     unsigned short deck[NUM_CARDS] = {0};
     for (unsigned short i = 0; i < NUM_CARDS; i++)
@@ -491,16 +491,40 @@ void cfr(int iterations)
         myStrat[i][0] = tempStrategy[0];
         myStrat[i][1] = tempStrategy[1];
     }
-    best_response(myStrat);
     save_strategy(myStrat);
-    printf("EV: %f\n",ev(myStrat, brStrategy, 0));
-    printf("EV: %f\n",ev(brStrategy, myStrat, 0));
     free(tempStrategy);
 }
 
-int main() {
+void evaluate() {
+    FILE *fptr = fopen("cfr.txt", "r");
+    if (fptr == NULL) {
+        printf("No saved strategy found. Run training first.\n");
+        return;
+    }
+    double myStrat[NUM_INFO][NUM_ACTIONS] = {0};
+    for (int i = 0; i < NUM_INFO; i++) {
+        if (fscanf(fptr, "%lf,%lf\n", &myStrat[i][0], &myStrat[i][1]) != 2) {
+            printf("Error reading strategy at row %d\n", i);
+            fclose(fptr);
+            return;
+        }
+    }
+    fclose(fptr);
+    best_response(myStrat);
+    printf("EV strat vs BR: %f\n", ev(myStrat, brStrategy, 0));
+    printf("EV BR vs strat: %f\n", ev(brStrategy, myStrat, 0));
+    printf("EV strat vs strat: %f\n", ev(myStrat, myStrat, 0));
+}
+
+int main(int argc, char *argv[]) {
     // Initialise the random number generator
     srand(time(NULL));
-    cfr(1000000);
+    if (argc > 1 && strcmp(argv[1], "evaluate") == 0) {
+        evaluate();
+    } else {
+        int iterations = 1000000;
+        if (argc > 2) iterations = atoi(argv[2]);
+        train(iterations);
+    }
     return 0;
 }
